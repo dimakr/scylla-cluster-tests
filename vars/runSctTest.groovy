@@ -174,7 +174,11 @@ def call(Map params, String region, functional_test = false, Map pipelineParams 
     echo "start test ......."
     RUNNER_IP=\$(cat sct_runner_ip||echo "")
     if [[ -n "\${RUNNER_IP}" ]] ; then
-        ./docker/env/hydra.sh --execute-on-runner \${RUNNER_IP} ${test_cmd} ${params.test_name} --backend ${params.backend}
+        if [[ "${params.backend}" == "docker-on-aws" ]] ; then
+            ./docker/env/hydra.sh --execute-on-runner \${RUNNER_IP} ${test_cmd} ${params.test_name} --backend docker
+        else
+            ./docker/env/hydra.sh --execute-on-runner \${RUNNER_IP} ${test_cmd} ${params.test_name} --backend ${params.backend}
+        fi
     else
         ./docker/env/hydra.sh ${test_cmd} ${params.test_name} --backend ${params.backend}  --logdir "`pwd`"
     fi
