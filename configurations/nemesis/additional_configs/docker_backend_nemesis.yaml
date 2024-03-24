@@ -22,7 +22,7 @@ nemesis_interval: 3
 nemesis_filter_seeds: false
 nemesis_during_prepare: true
 
-append_scylla_args: '--smp 1 --memory 5G'
+append_scylla_args: '--smp 1 --memory 2G'
 use_mgmt: false
 monitor_swap_size: 0
 enable_argus: false

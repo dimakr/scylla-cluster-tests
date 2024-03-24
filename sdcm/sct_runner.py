@@ -600,6 +600,26 @@ class AwsSctRunner(SctRunner):
         LOGGER.info("Got public IP: %s", instance.public_ip_address)
         self.instance = instance
 
+        if self.CLOUD_PROVIDER == "bla":
+            # The SCT runner is to be used as a Docker backend for tests
+            LOGGER.info("Connecting to instance...")
+            remoter = self.get_remoter(host=instance.public_ip_address, connect_timeout=120)
+
+            LOGGER.info("Installing scylla core tools...")
+            remoter.sudo(
+                "gpg --homedir /tmp --no-default-keyring --keyring /etc/apt/keyrings/scylladb.gpg "
+                "--keyserver hkp://keyserver.ubuntu.com:80 --recv-keys d0a112e067426ab2")
+            remoter.sudo("wget -O /etc/apt/sources.list.d/scylla.list http://downloads.scylladb.com/deb/debian/scylla-5.4.list")
+            remoter.sudo("apt-get update", ignore_status=True)
+            remoter.sudo("apt-get install scylla{,-tools-core,-python3} -y", ignore_status=True)
+
+            LOGGER.info("Configuring disk to use as a Docker container volume for Scylla data...")
+            remoter.sudo(
+                "/usr/lib/scylla/scylla_setup --disks /dev/nvme1n1 --online-discard 1 --no-kernel-check "
+                "--no-verify-package --no-enable-service --no-ntp-setup --no-coredump-setup --no-sysconfig-setup "
+                "--io-setup 0 --no-version-check --no-cpuscaling-setup --no-fstrim-setup --no-memory-setup "
+                "--no-swap-setup --no-rsyslog-setup")
+
         return instance
 
     def _stop_image_builder_instance(self, instance: Any) -> None:
