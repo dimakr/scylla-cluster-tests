@@ -2,7 +2,6 @@
 
 def call(Map params) {
     def test_config = groovy.json.JsonOutput.toJson(params.test_config)
-    def cloud_provider = getCloudProviderFromBackend(params.backend)
     sh """#!/bin/bash
         set -xe
 
@@ -10,7 +9,7 @@ def call(Map params) {
         if [[ -n "${params.requested_by_user}" ]] ; then
             export BUILD_USER_REQUESTED_BY=${params.requested_by_user}
         fi
-        export SCT_CLUSTER_BACKEND="${cloud_provider}"
+        export SCT_CLUSTER_BACKEND="${params.backend}"
         export SCT_CONFIG_FILES=${test_config}
 
         ./docker/env/hydra.sh create-argus-test-run
