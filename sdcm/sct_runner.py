@@ -603,6 +603,9 @@ class AwsSctRunner(SctRunner):
         self.instance = instance
 
         # If the SCT runner instance is used as a Docker backend for tests
+        LOGGER.info("SCT_CLUSTER_BACKEND: %s", os.getenv("SCT_CLUSTER_BACKEND"))
+        LOGGER.info("cluster_backend1: %s", self.params.get("cluster_backend"))
+        LOGGER.info("cluster_backend2: %s", self.params.cluster_backend)
         if os.getenv("SCT_CLUSTER_BACKEND") == "docker":
             LOGGER.info("Configure unused disks to use as a persistent storage for Docker.")
             LOGGER.info("Connecting to instance...")
