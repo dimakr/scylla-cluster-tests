@@ -1,0 +1,18 @@
+append_scylla_yaml: |
+  rpc_dict_training_min_time_seconds: 900
+  rpc_dict_update_period_seconds: 150
+  rpc_dict_training_min_bytes: 100000000
+  internode_compression_zstd_max_cpu_fraction: 1.0
+  rpc_dict_training_when: "when_leader"
+
+internode_compression: 'all'
+
+#prepare_write_cmd:  "cassandra-stress write cl=QUORUM n=200200300 -schema 'replication(strategy=NetworkTopologyStrategy,replication_factor=3) compaction(strategy=SizeTieredCompactionStrategy)' -mode cql3 native -rate threads=80 -pop seq=1..200200300 -col 'n=FIXED(10) size=FIXED(512)' -log interval=5"
+#
+#stress_cmd: ["cassandra-stress write cl=QUORUM duration=1440m -schema 'replication(strategy=NetworkTopologyStrategy,replication_factor=3) compaction(strategy=SizeTieredCompactionStrategy)' -mode cql3 native -rate threads=40 -pop seq=400200300..600200300 -col 'n=FIXED(10) size=FIXED(512)' -log interval=5",
+#             "cassandra-stress read  cl=QUORUM duration=1440m -schema 'replication(strategy=NetworkTopologyStrategy,replication_factor=3) compaction(strategy=SizeTieredCompactionStrategy)' -mode cql3 native -rate threads=40 -pop seq=1..200200300 -col 'n=FIXED(10) size=FIXED(512)' -log interval=5"
+#             ]
+#
+#test_duration: 1620
+
+hinted_handoff: 'disabled'

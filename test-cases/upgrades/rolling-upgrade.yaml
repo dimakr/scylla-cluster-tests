@@ -41,3 +41,12 @@ gemini_seed: 66
 gemini_schema_url: 'https://s3.amazonaws.com/scylla-gemini/Binaries/schema.json' # currently is not used
 
 use_preinstalled_scylla: false
+
+append_scylla_yaml: |
+  rpc_dict_training_min_time_seconds: 900
+  rpc_dict_update_period_seconds: 150
+  rpc_dict_training_min_bytes: 100000000
+  internode_compression_zstd_max_cpu_fraction: 0.05
+  rpc_dict_training_when: "when_leader"
+
+internode_compression: 'all'
