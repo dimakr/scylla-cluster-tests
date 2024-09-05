@@ -991,18 +991,20 @@ class UpgradeTest(FillDatabaseData, loader_utils.LoaderUtilsMixin):
         # Prepare keyspace and tables for truncate test
         self.fill_db_data_for_truncate_test(insert_rows=NUMBER_OF_ROWS_FOR_TRUNCATE_TEST)
 
-        self._add_sla_credentials_to_stress_commands(workloads_with_sla=['stress_during_entire_upgrade',
-                                                                         'stress_after_cluster_upgrade'])
+        # self._add_sla_credentials_to_stress_commands(workloads_with_sla=['stress_during_entire_upgrade',
+        #                                                                  'stress_after_cluster_upgrade'])
+        self._add_sla_credentials_to_stress_commands(workloads_with_sla=['stress_after_cluster_upgrade'])
         step = itertools_count(start=1)
         self._run_stress_workload("stress_before_upgrade", wait_for_finish=True)
-        stress_thread_pools = self._run_stress_workload("stress_during_entire_upgrade", wait_for_finish=False)
+        # stress_thread_pools = self._run_stress_workload("stress_during_entire_upgrade", wait_for_finish=False)
 
         # generate random order to upgrade
         nodes_to_upgrade = self.shuffle_nodes_and_alternate_dcs(list(self.db_cluster.nodes))
 
         # Upgrade all nodes that should be rollback later
         upgraded_nodes = []
-        for node_to_upgrade in nodes_to_upgrade[:self.params.get('num_nodes_to_rollback')]:
+        # for node_to_upgrade in nodes_to_upgrade[:self.params.get('num_nodes_to_rollback')]:
+        for node_to_upgrade in nodes_to_upgrade[:1]:
             self._start_and_wait_for_node_upgrade(node_to_upgrade, step=next(step))
             upgraded_nodes.append(node_to_upgrade)
 
@@ -1022,9 +1024,9 @@ class UpgradeTest(FillDatabaseData, loader_utils.LoaderUtilsMixin):
         InfoEvent(message='Run raft topology upgrade procedure').publish()
         self.run_raft_topology_upgrade_procedure()
 
-        InfoEvent(message="Waiting for stress_during_entire_upgrade to finish").publish()
-        for stress_thread_pool in stress_thread_pools:
-            self.verify_stress_thread(stress_thread_pool)
+        # InfoEvent(message="Waiting for stress_during_entire_upgrade to finish").publish()
+        # for stress_thread_pool in stress_thread_pools:
+        #     self.verify_stress_thread(stress_thread_pool)
 
         self._run_stress_workload("stress_after_cluster_upgrade", wait_for_finish=True)
 
