@@ -83,6 +83,7 @@ class FakeHostNetwork:
         has_firewalld=False,
         tun_zone=None,
         zone_change_fails=False,
+        forward_rules=True,
     ):
         self.tun_up = tun_up
         self.routes = set(routes)
@@ -91,6 +92,7 @@ class FakeHostNetwork:
         self.has_firewalld = has_firewalld
         self.tun_zone = tun_zone
         self.zone_change_fails = zone_change_fails
+        self.forward_rules = forward_rules
         self.commands = []
 
     def run(self, cmd, **_):
@@ -105,10 +107,11 @@ class FakeHostNetwork:
             return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr=b"")
         if cmd[0] == "docker":
             return subprocess.CompletedProcess(cmd, 0, stdout=b"#!/bin/bash\ntrue\n", stderr=b"")
-        if cmd[:3] == ["sudo", "-n", "firewall-cmd"]:
-            return self._run_firewall_cmd(cmd)
+        if (reply := self._run_query(cmd)) is not None:
+            return reply
         if cmd[0] == "sudo":
             self.tun_up = True
+            self.forward_rules = True
             if self.setup_applies:
                 self.routes = set(MINICLOUD_HOST_VPC_ROUTES)
                 self.tun_stdout = b"inet 10.127.0.1/24 scope global minicloud0"
@@ -116,6 +119,19 @@ class FakeHostNetwork:
                 self.routes = {LEGACY_BLANKET_ROUTE, "172.31.0.0/16"}
             return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
         raise AssertionError(f"unexpected command: {cmd}")
+
+    def _run_query(self, cmd):
+        """Answer the read-only firewall queries: firewall-cmd, the iptables FORWARD listing, the firewalld state."""
+        if cmd[:3] == ["sudo", "-n", "firewall-cmd"]:
+            return self._run_firewall_cmd(cmd)
+        if cmd[:4] == ["sudo", "-n", "iptables", "-S"]:
+            rules = [f"-A FORWARD -{flag} {TUN_NAME} -j ACCEPT" for flag in ("i", "o")] if self.forward_rules else []
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="\n".join(["-P FORWARD DROP", *rules]).encode(), stderr=b""
+            )
+        if cmd[0] == "systemctl":
+            return subprocess.CompletedProcess(cmd, 0 if self.has_firewalld else 3, stdout=b"", stderr=b"")
+        return None
 
     def _run_firewall_cmd(self, cmd):
         action = cmd[3]
@@ -133,7 +149,7 @@ class FakeHostNetwork:
         raise AssertionError(f"unexpected firewall-cmd invocation: {cmd}")
 
     def sudo_commands(self):
-        return [cmd for cmd in self.commands if cmd[0] == "sudo" and "firewall-cmd" not in cmd]
+        return [cmd for cmd in self.commands if cmd[0] == "sudo" and not {"firewall-cmd", "iptables"} & set(cmd)]
 
 
 @contextmanager
@@ -178,6 +194,16 @@ def test_setup_host_networking_reconfigures_when_legacy_blanket_route_present(tm
         setup_host_networking(config)
     assert fake.sudo_commands()
     assert LEGACY_BLANKET_ROUTE not in fake.routes
+
+
+def test_setup_host_networking_reconfigures_when_forward_rules_are_gone(tmp_path):
+    """A host firewall restart drops the FORWARD accepts but keeps the TUN device and routes: re-run the setup."""
+    fake = FakeHostNetwork(tun_up=True, routes=MINICLOUD_HOST_VPC_ROUTES, forward_rules=False)
+    config = MinicloudConfig(docker_image="ghcr.io/scylladb/minicloud:test", state_dir=str(tmp_path))
+    with _fake_host(fake):
+        setup_host_networking(config)
+    assert fake.sudo_commands()
+    assert fake.forward_rules
 
 
 def test_setup_host_networking_old_image_ignoring_overrides_raises(tmp_path):

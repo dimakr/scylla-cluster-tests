@@ -51,6 +51,30 @@ def _host_networking_matches() -> bool:
     return all(_route_on_tun(route) for route in MINICLOUD_HOST_VPC_ROUTES)
 
 
+def _setup_uses_firewalld() -> bool:
+    """Whether minicloud-setup.sh run from here configures firewalld instead of iptables, by the script's own test."""
+    if shutil.which("firewall-cmd") is None:
+        return False
+    return subprocess.run(["systemctl", "is-active", "--quiet", "firewalld"], check=False).returncode == 0
+
+
+def _forward_rules_missing() -> bool:
+    """True when the iptables FORWARD accepts that minicloud-setup.sh adds for the TUN device are gone.
+
+    A firewall or Docker restart on the host can drop them while the TUN device and its routes stay,
+    and the FORWARD policy then drops every packet the guests send out. False when the chain cannot
+    be listed, so that a working setup is not redone on a guess.
+    """
+    if _setup_uses_firewalld():
+        return False
+    result = subprocess.run(["sudo", "-n", "iptables", "-S", "FORWARD"], capture_output=True, check=False)
+    if result.returncode != 0:
+        LOGGER.debug("cannot list the iptables FORWARD chain: %s", result.stderr.decode(errors="replace").strip())
+        return False
+    rules = result.stdout.decode(errors="replace").splitlines()
+    return not all(f"-A FORWARD -{flag} {TUN_NAME} -j ACCEPT" in rules for flag in ("i", "o"))
+
+
 def _ensure_tun_in_firewalld_trusted_zone() -> None:
     """Ensure minicloud TUN device is in firewalld trusted zone so guest IMDS works.
 
@@ -117,11 +141,13 @@ def setup_host_networking(config: MinicloudConfig) -> None:
     On firewalld hosts the TUN device is also moved into the trusted zone (runtime-only, on every run).
     """
     if _host_networking_matches():
-        LOGGER.info(
-            "Host networking already configured (%s has %s and the expected routes)", TUN_NAME, MINICLOUD_TUN_ADDR
-        )
-        _ensure_tun_in_firewalld_trusted_zone()
-        return
+        if not _forward_rules_missing():
+            LOGGER.info(
+                "Host networking already configured (%s has %s and the expected routes)", TUN_NAME, MINICLOUD_TUN_ADDR
+            )
+            _ensure_tun_in_firewalld_trusted_zone()
+            return
+        LOGGER.warning("%s has its address and routes, but its iptables FORWARD accepts are gone", TUN_NAME)
 
     LOGGER.info("Configuring host networking for minicloud...")
     image = config.docker_image
