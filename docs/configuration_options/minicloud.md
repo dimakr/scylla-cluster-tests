@@ -156,7 +156,7 @@ Largest db guest vCPU count that `auto` sizing picks, for example 4 on a big hos
 
 ## **minicloud_lightweight_memory_loader** / SCT_MINICLOUD_LIGHTWEIGHT_MEMORY_LOADER
 
-RAM for loader guests in lightweight mode (minicloud matches their NodeType tag), for example 2GiB. Empty gives them [`minicloud_lightweight_memory`](#minicloud_lightweight_memory), the db size
+RAM for loader guests in lightweight mode (minicloud matches their NodeType tag), for example 2GiB. Empty gives them [`minicloud_lightweight_memory`](#minicloud_lightweight_memory), the db size. Or `auto`: SCT gives the loader 2GiB to 4GiB from the memory the db guests leave
 
 **default:** 2GiB
 
@@ -189,7 +189,7 @@ vCPUs per db guest in lightweight mode. Scylla runs one shard per vCPU, so this 
 
 ## **minicloud_lightweight_vcpus_loader** / SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER
 
-vCPUs for loader guests in lightweight mode (minicloud matches their NodeType tag). Empty gives them [`minicloud_lightweight_vcpus`](#minicloud_lightweight_vcpus), the db count. Or `auto`: SCT derives it from the host when minicloud starts. `auto` does not raise the loader memory: two cassandra-stress JVMs ran out of a 2GiB loader at 3-4 vCPUs
+vCPUs for loader guests in lightweight mode (minicloud matches their NodeType tag). Empty gives them [`minicloud_lightweight_vcpus`](#minicloud_lightweight_vcpus), the db count. Or `auto`: SCT derives it from the host when minicloud starts, at most 1 vCPU per GiB of loader memory: two cassandra-stress JVMs ran out of a 2GiB loader at 3-4 vCPUs
 
 **default:** 1
 

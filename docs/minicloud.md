@@ -156,8 +156,8 @@ exit-137 failure mode above if you were wrong.
 
 #### Sizes derived from the host
 
-`minicloud_lightweight_memory`, `minicloud_lightweight_vcpus` and
-`minicloud_lightweight_vcpus_loader` accept `auto`. SCT then sizes them from the host, with the
+`minicloud_lightweight_memory`, `minicloud_lightweight_vcpus`,
+`minicloud_lightweight_vcpus_loader` and `minicloud_lightweight_memory_loader` accept `auto`. SCT then sizes them from the host, with the
 guests counted at their peak as above. A number still sets the size explicitly.
 
 - db guest memory: the largest whole GiB, from `minicloud_auto_memory_max` (6GiB by default) down to
@@ -169,9 +169,12 @@ guests counted at their peak as above. A number still sets the size explicitly.
 - db guest vCPUs: the most, from `minicloud_auto_vcpus_max` (2 by default) down to 2, for which the
   db guests, the monitor and the loader (2 vCPUs if it is `auto`) fit the host threads and the
   memory still gives each shard 1GiB. More vCPUs raise the memory floor (6GiB at 4 vCPUs).
-- loader vCPUs: 2 to 4, from the host threads left after the db guests and the monitor. `auto`
-  does not raise the loader memory: in the 6-node rolling upgrade, two c-s JVMs ran out of a 2GiB
-  loader at 3 and 4 vCPUs. Raise `minicloud_lightweight_memory_loader` with it.
+- loader memory: after the db guests (sized with the loader at 2GiB), the largest of 4GiB, 3GiB
+  and 2GiB that still fits the budget.
+- loader vCPUs: 2 to 4, from the host threads left after the db guests and the monitor, and at
+  most 1 per GiB of loader memory. A cassandra-stress JVM takes a 512MiB heap or more, and its
+  native memory grows with the vCPUs: in the 6-node rolling upgrade, two of them ran out of a 2GiB
+  loader at 3 and 4 vCPUs.
 
 With `minicloud_container_cpus` set, the host threads are that number, rounded down.
 

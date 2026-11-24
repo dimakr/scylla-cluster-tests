@@ -42,7 +42,12 @@ MINICLOUD_LIGHTWEIGHT_MEMORY_DEFAULT = "4GiB"
 MINICLOUD_LIGHTWEIGHT_VCPUS_DEFAULT = 1
 # a size param set to "auto" is sized from the host (see sizing.py).
 AUTO = "auto"
-AUTO_SIZE_PARAMS = ("minicloud_lightweight_memory", "minicloud_lightweight_vcpus", "minicloud_lightweight_vcpus_loader")
+AUTO_SIZE_PARAMS = (
+    "minicloud_lightweight_memory",
+    "minicloud_lightweight_vcpus",
+    "minicloud_lightweight_vcpus_loader",
+    "minicloud_lightweight_memory_loader",
+)
 
 
 def is_auto(value) -> bool:
@@ -350,7 +355,7 @@ class MinicloudConfig:
             lightweight=lightweight,
             lightweight_memory=lightweight_memory,
             lightweight_vcpus=lightweight_vcpus,
-            lightweight_memory_loader=_param_or_none(params, "minicloud_lightweight_memory_loader"),
+            lightweight_memory_loader=_size_param_or_none(params, "minicloud_lightweight_memory_loader"),
             lightweight_memory_monitor=_monitor_size_param(params, "minicloud_lightweight_memory_monitor"),
             lightweight_vcpus_loader=_size_param_or_none(params, "minicloud_lightweight_vcpus_loader"),
             lightweight_vcpus_monitor=_monitor_size_param(params, "minicloud_lightweight_vcpus_monitor"),

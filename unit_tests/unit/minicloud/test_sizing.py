@@ -103,7 +103,7 @@ def test_resolve_adopts_the_sizes_of_a_running_minicloud(resolve, tmp_path):
         params, record = resolve(running_cmd=cmd)
     budget.assert_not_called()
     assert record is None
-    assert _sizes(params) == ("4GiB", 2, 3)
+    assert _sizes(params) == ("4GiB", 2, 3, "2GiB")
     assert not (tmp_path / "sizing.json").exists()
 
 
@@ -113,10 +113,11 @@ def test_resolve_derives_and_records_when_none_is_running(resolve, tmp_path):
         patch("sdcm.utils.minicloud.sizing.os.cpu_count", return_value=32),
     ):
         params, record = resolve()
-    assert _sizes(params) == ("4GiB", 2, 4)
-    assert record["sizes"] == {"db_memory": "4GiB", "db_vcpus": 2, "loader_vcpus": 4}
+    # 32 threads leave the loader 4 vCPUs, but its 2GiB carries 2
+    assert _sizes(params) == ("4GiB", 2, 2, "2GiB")
+    assert record["sizes"] == {"db_memory": "4GiB", "db_vcpus": 2, "loader_vcpus": 2, "loader_memory": "2GiB"}
     assert record["guests"] == {"total": 8, "db": 6, "loaders": 1, "monitors": 1, "nemesis_growth": 0}
-    assert record["flags"] == ["4GiB,NodeType=loader=2GiB,NodeType=monitor=2GiB", "2,NodeType=loader=4"]
+    assert record["flags"] == ["4GiB,NodeType=loader=2GiB,NodeType=monitor=2GiB", "2,NodeType=loader=2"]
     assert json.loads((tmp_path / "sizing.json").read_text()) == record
 
 
@@ -126,8 +127,18 @@ def test_resolve_counts_only_the_container_cpus(resolve):
         patch("sdcm.utils.minicloud.sizing.os.cpu_count", return_value=32),
     ):
         params, record = resolve(minicloud_container_cpus="12.5")
-    assert _sizes(params) == ("4GiB", 2, 2)
+    assert _sizes(params) == ("4GiB", 2, 2, "2GiB")
     assert record["host"]["cpu_threads"] == 12
+
+
+def test_resolve_sizes_the_loader_memory_first_then_its_vcpus(resolve):
+    # minipc5: 6 x 4GiB + loader 4GiB + monitor 2GiB + 10GiB headroom + 2GiB margin = 42GiB of 42.8GiB
+    with (
+        _meminfo_path_patch(int(42.8 * 1024 * 1024)),
+        patch("sdcm.utils.minicloud.sizing.os.cpu_count", return_value=16),
+    ):
+        params, _ = resolve(minicloud_lightweight_memory_loader="auto", minicloud_lightweight_vcpus_monitor=1)
+    assert _sizes(params) == ("4GiB", 2, 3, "4GiB")
 
 
 def test_resolve_writes_numbers_into_a_real_sct_config(params):
@@ -135,7 +146,7 @@ def test_resolve_writes_numbers_into_a_real_sct_config(params):
         params[knob] = "auto"
     cmd = ["--lightweight", "--lightweight-memory", "6GiB", "--lightweight-vcpus", "2"]
     resolve_auto_sizing(params, MinicloudConfig.from_env(params=params), cmd)
-    assert _sizes(params) == ("6GiB", 2, None)
+    assert _sizes(params) == ("6GiB", 2, None, None)
     assert params.model_dump()["minicloud_lightweight_vcpus"] == 2  # what Argus stores
 
 

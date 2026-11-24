@@ -281,6 +281,7 @@ class MinicloudHostSizingTable(StaticGenericResultTable):
             ColumnMetadata(name="db_memory_gib", unit="GiB", type=ResultType.FLOAT),
             ColumnMetadata(name="db_vcpus", unit="", type=ResultType.INTEGER),
             ColumnMetadata(name="loader_vcpus", unit="", type=ResultType.INTEGER),
+            ColumnMetadata(name="loader_memory_gib", unit="GiB", type=ResultType.FLOAT),
         ]
 
 

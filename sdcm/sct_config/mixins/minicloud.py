@@ -102,7 +102,8 @@ class MinicloudConfigMixin(BaseModel):
     )
     minicloud_lightweight_memory_loader: String = SctField(
         description="RAM for loader guests in lightweight mode (minicloud matches their NodeType tag), "
-        "for example 2GiB. Empty gives them minicloud_lightweight_memory, the db size",
+        "for example 2GiB. Empty gives them minicloud_lightweight_memory, the db size. "
+        "Or `auto`: SCT gives the loader 2GiB to 4GiB from the memory the db guests leave",
     )
     minicloud_lightweight_memory_monitor: String = SctField(
         description="RAM for monitor guests in lightweight mode (minicloud matches their NodeType tag), "
@@ -117,7 +118,7 @@ class MinicloudConfigMixin(BaseModel):
     minicloud_lightweight_vcpus_loader: OptionalPositiveIntOrAuto = SctField(
         description="vCPUs for loader guests in lightweight mode (minicloud matches their NodeType tag). "
         "Empty gives them minicloud_lightweight_vcpus, the db count. "
-        "Or `auto`: SCT derives it from the host when minicloud starts. `auto` does not raise the "
+        "Or `auto`: SCT derives it from the host when minicloud starts, at most 1 vCPU per GiB of "
         "loader memory: two cassandra-stress JVMs ran out of a 2GiB loader at 3-4 vCPUs",
     )
     minicloud_lightweight_vcpus_monitor: OptionalPositiveInt = SctField(

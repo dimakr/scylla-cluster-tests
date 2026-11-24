@@ -48,6 +48,12 @@ AUTO_VCPUS_MAX_DEFAULT = 2
 # the loader runs full-size stress: at least 2 vCPUs, up to 4 if the host has threads to spare.
 LOADER_VCPUS_MIN = 2
 LOADER_VCPUS_MAX = 4
+# A loader runs up to two cassandra-stress JVMs. Each takes a heap of 512MiB or more, and native
+# memory that grows with the vCPUs (GC and JIT threads, 2 Netty pools per vCPU). 2GiB fits 2 vCPUs,
+# 3-4 vCPUs ran out of it. `auto` gives the loader 2-4GiB and at most 1 vCPU per GiB.
+LOADER_MEMORY_MIN_GIB = 2
+LOADER_MEMORY_MAX_GIB = 4
+LOADER_VCPUS_PER_GIB = 1
 
 
 def db_memory_floor_gib(db_vcpus: int) -> int:
@@ -147,13 +153,30 @@ def derive_loader_vcpus(
     return min(max(spare // max(loaders, 1), LOADER_VCPUS_MIN), LOADER_VCPUS_MAX)
 
 
+def derive_loader_memory(config: MinicloudConfig, params, guests: int, budget: MemoryBudget, db_memory: str) -> str:
+    """Return the largest loader size, from 4GiB down to 2GiB, that fits ``budget`` next to the db guests."""
+    db_gib = int(parse_memory_gib(db_memory, "minicloud_lightweight_memory"))
+    for gib in range(LOADER_MEMORY_MAX_GIB, LOADER_MEMORY_MIN_GIB, -1):
+        sized = dataclasses.replace(config, lightweight_memory_loader=f"{gib}GiB")
+        if _needed_gib(sized, params, guests, budget, db_gib)[0] <= budget.gib:
+            return f"{gib}GiB"
+    return f"{LOADER_MEMORY_MIN_GIB}GiB"
+
+
+def _vcpus_for_memory(loader_vcpus: int, loader_memory: str) -> int:
+    """Cap the loader vCPUs at what its memory carries: the JVM native memory grows with each vCPU."""
+    loader_gib = parse_memory_gib(loader_memory, "minicloud_lightweight_memory_loader")
+    return max(min(loader_vcpus, int(loader_gib * LOADER_VCPUS_PER_GIB)), LOADER_VCPUS_MIN)
+
+
 @dataclasses.dataclass(frozen=True)
 class LightweightSizes:
-    """The db guest size and the loader vCPUs a running minicloud was started with."""
+    """The db guest size and the loader size a running minicloud was started with."""
 
     memory: str
     vcpus: int
     vcpus_loader: int | None
+    memory_loader: str | None = None
 
 
 def _flag_value(cmd: list[str], flag: str) -> str | None:
@@ -173,10 +196,19 @@ def parse_lightweight_flags(cmd: list[str]) -> LightweightSizes | None:
         return None
 
     loader_prefix = f"{MINICLOUD_ROLE_TAG_KEY}=loader=".lower()
-    loader = next(
-        (item[len(loader_prefix) :] for item in vcpus_flag.split(",") if item.lower().startswith(loader_prefix)), None
+
+    def loader_value(flag: str) -> str | None:
+        return next(
+            (item[len(loader_prefix) :] for item in flag.split(",") if item.lower().startswith(loader_prefix)), None
+        )
+
+    loader = loader_value(vcpus_flag)
+    return LightweightSizes(
+        memory=memory,
+        vcpus=int(vcpus),
+        vcpus_loader=int(loader) if loader else None,
+        memory_loader=loader_value(memory_flag),
     )
-    return LightweightSizes(memory=memory, vcpus=int(vcpus), vcpus_loader=int(loader) if loader else None)
 
 
 def host_thread_budget(config: MinicloudConfig) -> int:
@@ -190,10 +222,16 @@ def host_thread_budget(config: MinicloudConfig) -> int:
 def _derive_sizes(
     params, config: MinicloudConfig, derived: list[str], guests: int, budget: MemoryBudget | None, host_threads: int
 ):
-    """Return the db memory, db vCPUs and loader vCPUs: derived for the `auto` knobs, as given for the others."""
+    """Return the db memory, db vCPUs, loader vCPUs and loader memory: derived for the `auto` knobs, as given for the others.
+
+    The db guests come first, with an `auto` loader at its smallest size. The loader then takes what is left.
+    """
     loaders = sum_node_counts(params.get("n_loaders"))
     monitors = sum_node_counts(params.get("n_monitor_nodes"))
     db_guests = guests - loaders - monitors
+    loader_memory_derived = "minicloud_lightweight_memory_loader" in derived
+    if loader_memory_derived:
+        config = dataclasses.replace(config, lightweight_memory_loader=f"{LOADER_MEMORY_MIN_GIB}GiB")
     if "minicloud_lightweight_vcpus" in derived:
         db_vcpus = derive_db_vcpus(config, params, derived, guests, budget, host_threads)
     else:
@@ -206,16 +244,26 @@ def _derive_sizes(
     else:
         db_memory = derive_db_memory(config, params, guests, budget, db_vcpus)
 
+    if loader_memory_derived and budget is not None:
+        loader_memory = derive_loader_memory(
+            config, params, guests, budget, db_memory or MINICLOUD_LIGHTWEIGHT_MEMORY_DEFAULT
+        )
+    else:
+        loader_memory = config.lightweight_memory_loader
+
     monitor_vcpus = config.lightweight_vcpus_monitor or db_vcpus
     if "minicloud_lightweight_vcpus_loader" in derived:
         loader_vcpus = derive_loader_vcpus(host_threads, db_guests, db_vcpus, loaders, monitors, monitor_vcpus)
+        loader_vcpus = _vcpus_for_memory(
+            loader_vcpus, loader_memory or db_memory or MINICLOUD_LIGHTWEIGHT_MEMORY_DEFAULT
+        )
     else:
         loader_vcpus = params.get("minicloud_lightweight_vcpus_loader")
 
     guest_vcpus = db_guests * db_vcpus + loaders * (loader_vcpus or db_vcpus) + monitors * monitor_vcpus
     if guest_vcpus > host_threads:
         LOGGER.warning("the guests get %d vCPUs at their peak on a host with %d threads", guest_vcpus, host_threads)
-    return db_memory, db_vcpus, loader_vcpus
+    return db_memory, db_vcpus, loader_vcpus, loader_memory
 
 
 def _sizing_record(
@@ -239,7 +287,7 @@ def _sizing_record(
             "monitors": monitors,
             "nemesis_growth": nemesis_growth_guests(params),
         },
-        "sizes": dict(zip(("db_memory", "db_vcpus", "loader_vcpus"), sizes)),
+        "sizes": dict(zip(("db_memory", "db_vcpus", "loader_vcpus", "loader_memory"), sizes)),
         "derived": derived,
         "flags": list(MinicloudConfig.from_env(params=params).lightweight_flag_values()),
     }
@@ -259,7 +307,9 @@ def resolve_auto_sizing(params, config: MinicloudConfig, running_cmd: list[str] 
         raise MinicloudError("minicloud_lightweight_* = auto needs minicloud_lightweight: true")
 
     if running_cmd and (running := parse_lightweight_flags(running_cmd)):
-        adopted = dict(zip(AUTO_SIZE_PARAMS, (running.memory, running.vcpus, running.vcpus_loader)))
+        adopted = dict(
+            zip(AUTO_SIZE_PARAMS, (running.memory, running.vcpus, running.vcpus_loader, running.memory_loader))
+        )
         for knob in derived:
             params[knob] = adopted[knob]
         LOGGER.info("minicloud sizes adopted from the running minicloud: %s", {knob: adopted[knob] for knob in derived})
@@ -315,6 +365,11 @@ def submit_minicloud_sizing_to_argus(argus_client, record: dict) -> None:
         "db_memory_gib": parse_memory_gib(sizes["db_memory"], "minicloud_lightweight_memory"),
         "db_vcpus": sizes["db_vcpus"],
         "loader_vcpus": sizes["loader_vcpus"],
+        "loader_memory_gib": (
+            parse_memory_gib(sizes["loader_memory"], "minicloud_lightweight_memory_loader")
+            if sizes.get("loader_memory")
+            else None
+        ),
     }
     table = MinicloudHostSizingTable()
     for column, value in values.items():
