@@ -21,6 +21,7 @@ YCSB = "bin/ycsb run dynamodb -P workloads/workloada -threads 100 -target 1200 -
 
 def test_duration_bound_cmd_limits_cassandra_stress_and_ycsb_by_time():
     assert duration_bound_cmd(CS_WRITE) == CS_WRITE.replace(" n=15000000 ", " duration=5m ")
+    assert duration_bound_cmd(CS_WRITE.replace(" -pop seq=1..15000000", "")) is None
     assert duration_bound_cmd(YCSB) == YCSB + " -p maxexecutiontime=300"
 
 

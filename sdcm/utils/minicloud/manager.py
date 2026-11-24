@@ -22,6 +22,7 @@ from sdcm.utils.minicloud.activation import (
 )
 from sdcm.utils.minicloud.azure import setup_azure_credentials, wait_for_tls
 from sdcm.utils.minicloud.config import (
+    AUTO_SIZE_PARAMS,
     MINICLOUD_BINARY,
     MINICLOUD_HEALTH_INTERVAL,
     MINICLOUD_HEALTH_TIMEOUT,
@@ -41,7 +42,7 @@ from sdcm.utils.minicloud.preflight import (
     parse_memory_gib,
     sum_node_counts,
 )
-from sdcm.utils.minicloud.sizing import AUTO_KNOBS, resolve_auto_sizing
+from sdcm.utils.minicloud.sizing import resolve_auto_sizing
 
 LOGGER = logging.getLogger(__name__)
 DOCKER_LOGS_TIMEOUT = 20
@@ -1036,7 +1037,7 @@ def resolve_minicloud_sizing(params) -> bool:
 
     Call it before minicloud starts and before anything reads a size. Returns whether any size was `auto`.
     """
-    if not any(is_auto(params.get(knob)) for knob in AUTO_KNOBS):
+    if not any(is_auto(params.get(knob)) for knob in AUTO_SIZE_PARAMS):
         return False
     manager = MinicloudManager(MinicloudConfig.from_env(params=params))
     resolve_auto_sizing(params, manager.config, manager.running_lightweight_cmd())

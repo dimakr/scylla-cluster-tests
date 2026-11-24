@@ -6,10 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
-from sdcm.utils.minicloud.config import MinicloudConfig, MinicloudError
+from sdcm.utils.minicloud.config import AUTO_SIZE_PARAMS, MinicloudConfig, MinicloudError
 from sdcm.utils.minicloud.preflight import MemoryBudget
 from sdcm.utils.minicloud.sizing import (
-    AUTO_KNOBS,
     derive_db_memory,
     derive_db_vcpus,
     derive_loader_vcpus,
@@ -50,8 +49,8 @@ def test_derive_db_memory_fails_with_the_numbers_below_the_floor(minicloud_confi
 def test_derive_db_vcpus_grows_up_to_a_raised_ceiling_while_the_host_has_threads(minicloud_config):
     params = {**PARAMS, "minicloud_auto_vcpus_max": 4, "minicloud_auto_memory_max": "16GiB"}
     # 6 db x 4 + monitor 4 + loader 2 = 30 threads; at 3 vCPUs 23 would still not fit 16
-    assert derive_db_vcpus(minicloud_config, params, list(AUTO_KNOBS), 8, _budget(100.0), host_threads=32) == 4
-    assert derive_db_vcpus(minicloud_config, params, list(AUTO_KNOBS), 8, _budget(100.0), host_threads=16) == 2
+    assert derive_db_vcpus(minicloud_config, params, list(AUTO_SIZE_PARAMS), 8, _budget(100.0), host_threads=32) == 4
+    assert derive_db_vcpus(minicloud_config, params, list(AUTO_SIZE_PARAMS), 8, _budget(100.0), host_threads=16) == 2
 
 
 def test_derive_db_vcpus_counts_an_explicit_loader_size(minicloud_config):
@@ -89,7 +88,7 @@ def resolve(tmp_path):
 
 
 def _sizes(params):
-    return tuple(params[knob] for knob in AUTO_KNOBS)
+    return tuple(params[knob] for knob in AUTO_SIZE_PARAMS)
 
 
 def test_resolve_adopts_the_sizes_of_a_running_minicloud(resolve, tmp_path):
@@ -132,7 +131,7 @@ def test_resolve_counts_only_the_container_cpus(resolve):
 
 
 def test_resolve_writes_numbers_into_a_real_sct_config(params):
-    for knob in AUTO_KNOBS:
+    for knob in AUTO_SIZE_PARAMS:
         params[knob] = "auto"
     cmd = ["--lightweight", "--lightweight-memory", "6GiB", "--lightweight-vcpus", "2"]
     resolve_auto_sizing(params, MinicloudConfig.from_env(params=params), cmd)
@@ -144,7 +143,7 @@ RECORD = {
     "host": {"name": "host-a", "cpu_threads": 16, "mem_total_gib": 44.0, "budget_gib": 42.1, "budget_source": "x"},
     "guests": {"total": 8, "db": 6, "loaders": 1, "monitors": 1, "nemesis_growth": 0},
     "sizes": {"db_memory": "4GiB", "db_vcpus": 2, "loader_vcpus": 3},
-    "derived": list(AUTO_KNOBS),
+    "derived": list(AUTO_SIZE_PARAMS),
     "flags": ["4GiB", "2,NodeType=loader=3"],
 }
 

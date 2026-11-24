@@ -33,7 +33,6 @@ from sdcm.utils.minicloud.preflight import (
 
 LOGGER = logging.getLogger(__name__)
 
-AUTO_KNOBS = AUTO_SIZE_PARAMS
 # written to minicloud_state_dir when SCT sizes the guests; read back only for the report
 SIZING_FILE = "sizing.json"
 
@@ -253,14 +252,14 @@ def resolve_auto_sizing(params, config: MinicloudConfig, running_cmd: list[str] 
     restarts it. Otherwise, size from the host, write the record to `sizing.json` in the state
     dir and return it. Return None when nothing was sized from the host.
     """
-    derived = [knob for knob in AUTO_KNOBS if is_auto(params.get(knob))]
+    derived = [knob for knob in AUTO_SIZE_PARAMS if is_auto(params.get(knob))]
     if not derived:
         return None
     if params.get("minicloud_lightweight") is False:
         raise MinicloudError("minicloud_lightweight_* = auto needs minicloud_lightweight: true")
 
     if running_cmd and (running := parse_lightweight_flags(running_cmd)):
-        adopted = dict(zip(AUTO_KNOBS, (running.memory, running.vcpus, running.vcpus_loader)))
+        adopted = dict(zip(AUTO_SIZE_PARAMS, (running.memory, running.vcpus, running.vcpus_loader)))
         for knob in derived:
             params[knob] = adopted[knob]
         LOGGER.info("minicloud sizes adopted from the running minicloud: %s", {knob: adopted[knob] for knob in derived})
@@ -270,7 +269,7 @@ def resolve_auto_sizing(params, config: MinicloudConfig, running_cmd: list[str] 
     budget = host_memory_budget(config, guests)
     host_threads = host_thread_budget(config)
     sizes = _derive_sizes(params, config, derived, guests, budget, host_threads)
-    for knob, value in zip(AUTO_KNOBS, sizes):
+    for knob, value in zip(AUTO_SIZE_PARAMS, sizes):
         if knob in derived:
             params[knob] = value
     record = _sizing_record(params, derived, guests, budget, host_threads, sizes)

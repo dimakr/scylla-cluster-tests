@@ -7,6 +7,7 @@ import pytest
 from sdcm.sct_config import AWS_SUPPORTED_REGIONS
 from sdcm.sct_config.types import positive_int_auto_or_none
 from sdcm.utils.minicloud.config import (
+    AUTO_SIZE_PARAMS,
     MINICLOUD_CONTAINER_NAME,
     MINICLOUD_DEFAULT_REGION,
     MINICLOUD_GCP_PROJECT_DEFAULT,
@@ -18,7 +19,6 @@ from sdcm.utils.minicloud.config import (
     default_minicloud_image,
 )
 from sdcm.utils.minicloud.endpoint import MINICLOUD_PORT
-from sdcm.utils.minicloud.sizing import AUTO_KNOBS
 
 DEFAULT_BUCKETS = ["scylla-qa-keystore", "cloudius-jenkins-test", "downloads.scylladb.com", "scylla-qa-team"]
 
@@ -357,7 +357,7 @@ def test_minicloud_error_preserves_message():
 
 
 def test_minicloud_config_builds_with_unresolved_auto():
-    config = MinicloudConfig.from_env(params=dict.fromkeys(AUTO_KNOBS, "auto"))
+    config = MinicloudConfig.from_env(params=dict.fromkeys(AUTO_SIZE_PARAMS, "auto"))
     assert config.unresolved_auto is True
     assert (config.lightweight_memory, config.lightweight_vcpus, config.lightweight_vcpus_loader) == ("4GiB", 1, None)
 

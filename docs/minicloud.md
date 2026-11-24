@@ -169,7 +169,9 @@ guests counted at their peak as above. A number still sets the size explicitly.
 - db guest vCPUs: the most, from `minicloud_auto_vcpus_max` (2 by default) down to 2, for which the
   db guests, the monitor and the loader (2 vCPUs if it is `auto`) fit the host threads and the
   memory still gives each shard 1GiB. More vCPUs raise the memory floor (6GiB at 4 vCPUs).
-- loader vCPUs: 2 to 4, from the host threads left after the db guests and the monitor.
+- loader vCPUs: 2 to 4, from the host threads left after the db guests and the monitor. `auto`
+  does not raise the loader memory: in the 6-node rolling upgrade, two c-s JVMs ran out of a 2GiB
+  loader at 3 and 4 vCPUs. Raise `minicloud_lightweight_memory_loader` with it.
 
 With `minicloud_container_cpus` set, the host threads are that number, rounded down.
 
@@ -615,7 +617,8 @@ adds their 1 GiB per guest to it; the 2 GiB base headroom stays out, since docke
 outside the container.
 
 The weekly-minicloud rolling-upgrade twins in `configurations/triggers/rolling-upgrade.yaml` set
-the three size params to `auto`, so they need no per-host values (see "Sizes derived from the host").
+the db guest memory and vCPUs to `auto`, so they need no per-host values (see "Sizes derived from
+the host"). They keep the loader at 2 vCPUs.
 
 #### Stress during the upgrade
 
@@ -626,7 +629,8 @@ the upgrade tests rerun them in 5-minute passes until the test waits for them. T
 command of `stress_during_entire_upgrade` in `test_generic_cluster_upgrade`. The first pass runs
 the command as written, so later reads find every row it writes. Only cassandra-stress (`n=`
 becomes `duration=5m`) and YCSB (`maxexecutiontime=300`) can be limited by time. Other commands
-run once.
+run once, and so does a cassandra-stress command with `n=` but no `-pop`: there `n=` also sets
+the key range, which `duration=` would change.
 
 ### Guest memory locking
 

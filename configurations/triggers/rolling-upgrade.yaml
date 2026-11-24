@@ -56,8 +56,9 @@ jenkinsfiles:
 #                             it runs on. 2 vCPUs per db guest, and 6GiB of memory that steps down
 #                             to 4GiB when the host cannot fit more. The loader and
 #                             monitor take their 2GiB defaults
-#       extra_environment_variables - SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto: the loader gets
-#                             2 to 4 vCPUs from the host threads that the db guests leave
+#       extra_environment_variables - SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2: the loader keeps
+#                             2 vCPUs. At 3-4 (`auto`) two c-s JVMs ran out of its 2GiB and the
+#                             whole-test write was OOM-killed; the monitor takes the 1 vCPU default
 #   - the Friday `weekly-minicloud` cron line fires that block.
 #
 # To go back to biweekly real-cloud runs on master: delete the "Minicloud on master" block
@@ -356,7 +357,7 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/generic-rolling-upgrade.yaml", "configurations/rolling-upgrade-artifacts.yaml", "configurations/minicloud/rolling-upgrade-write-rate-cap.yaml", "configurations/gce/z3-highmem-8-highlssd.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'
 
   - job_name: "rolling-upgrade/rolling-upgrade-debian13-test"
@@ -373,7 +374,7 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/generic-rolling-upgrade.yaml", "configurations/rolling-upgrade-artifacts.yaml", "configurations/minicloud/rolling-upgrade-write-rate-cap.yaml", "configurations/gce/z3-highmem-8-highlssd.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'
 
   - job_name: "rolling-upgrade/rolling-upgrade-ubuntu2404-test"
@@ -390,7 +391,7 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/generic-rolling-upgrade.yaml", "configurations/rolling-upgrade-artifacts.yaml", "configurations/minicloud/rolling-upgrade-write-rate-cap.yaml", "configurations/gce/z3-highmem-8-highlssd.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'
 
   - job_name: "rolling-upgrade/rolling-upgrade-ubuntu2604-test"
@@ -407,7 +408,7 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/generic-rolling-upgrade.yaml", "configurations/rolling-upgrade-artifacts.yaml", "configurations/minicloud/rolling-upgrade-write-rate-cap.yaml", "configurations/gce/z3-highmem-8-highlssd.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'
 
   - job_name: "rolling-upgrade/rolling-upgrade-ami-test"
@@ -425,7 +426,7 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/rolling-upgrade.yaml", "configurations/minicloud/rolling-upgrade-6-nodes-write-rate-cap.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'
 
   - job_name: "rolling-upgrade/rolling-upgrade-gce-image-test"
@@ -443,7 +444,7 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/rolling-upgrade.yaml", "configurations/minicloud/rolling-upgrade-6-nodes-write-rate-cap.yaml", "configurations/gce/z3-highmem-8-highlssd.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'
 
   - job_name: "rolling-upgrade/rolling-upgrade-alternator-test"
@@ -460,5 +461,5 @@ jobs:
       jenkins_label: "minicloud-kvm-builders-rolling-upgrades"
       minicloud_lightweight_vcpus: "auto"
       minicloud_lightweight_memory: "auto"
-      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=auto"
+      extra_environment_variables: "SCT_MINICLOUD_LIGHTWEIGHT_VCPUS_LOADER=2"
       test_config: '["test-cases/upgrades/generic-rolling-upgrade.yaml", "configurations/rolling-upgrade-alternator.yaml", "configurations/minicloud/rolling-upgrade-alternator-write-rate-cap.yaml", "configurations/gce/z3-highmem-8-highlssd.yaml", "configurations/auth_cassandra.yaml", "configurations/minicloud.yaml"]'

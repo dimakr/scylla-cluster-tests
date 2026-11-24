@@ -14,12 +14,15 @@ KEEP_ALIVE_PASS_MINUTES = 5
 
 CS_ROW_COUNT = re.compile(r"(?<!\S)n=\d+[a-zA-Z]?(?!\S)")
 CS_DURATION = re.compile(r"(?<!\S)duration=\d+[smhd]?(?!\S)")
+CS_POPULATION = re.compile(r"(?<!\S)-pop(?!\S)")
 YCSB_MAX_TIME = re.compile(r"maxexecutiontime=\d+")
 
 
 def duration_bound_cmd(stress_cmd: str, minutes: int = KEEP_ALIVE_PASS_MINUTES) -> str | None:
     """Return ``stress_cmd`` limited to ``minutes``, or None for a tool without a duration-bound form."""
     if "cassandra-stress" in stress_cmd:
+        if CS_ROW_COUNT.search(stress_cmd) and not CS_POPULATION.search(stress_cmd):
+            return None  # without -pop, n= is also the key range, and duration= would change it
         for pattern in (CS_ROW_COUNT, CS_DURATION):
             if pattern.search(stress_cmd):
                 return pattern.sub(f"duration={minutes}m", stress_cmd, count=1)

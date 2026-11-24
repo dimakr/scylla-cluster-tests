@@ -28,7 +28,7 @@ concerns first, then one page per backend, then one per test type.
 
 ## Groups
 
-543 options across 29 groups.
+544 options across 29 groups.
 
 | Group | Options | What it covers |
 |---|---:|---|
