@@ -39,6 +39,10 @@ Optionally, you can override default cloud instance type by providing `instance_
 
 `private-repo.jenkinsfile` can be used to create a Jenkins project which verifies private repo correctness. You need to provide `scylla_repo` parameter which points to a private repo.
 
+## Lab copies on minicloud
+
+Eight `.rpm`/`.deb` jobs of master also have a lab copy, `artifacts-<os>-minicloud.jenkinsfile`. A lab copy runs the test-case of its cloud job on minicloud, on a lab KVM host (see [minicloud.md](minicloud.md)). scylla-pkg starts it with the same `scylla_repo` as the cloud job. A lab copy sets no `scylla_version`, because a version wins over `scylla_repo`. `unit_tests/unit/test_minicloud_artifact_jobs.py` makes sure that each lab copy uses the test-case files of its cloud job. amazon2023 has no lab copy: its AMI does not boot on minicloud yet. The tracking ticket is SCT-998.
+
 # How to run artifacts tests using `hydra`
 
 If you run it from a laptop on `aws` or `gce`, SCT must reach the nodes over public IPs. Both
